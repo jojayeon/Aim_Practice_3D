@@ -1,0 +1,19 @@
+/* src/styles/ResultPage.module.css */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f4f4f4;
+}
+
+.title {
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.score {
+  font-size: 1.5rem;
+  margin-bottom: 30px;
+}
