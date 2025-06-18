@@ -41,9 +41,42 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
   const clamp = (val: number, min: number, max: number) =>
     Math.max(min, Math.min(max, val));
 
+  // CanvasTexture로 격자무늬 텍스처 생성 (가로세로 size, grid 간격 gridSize, 색상 gridColor, 배경색 bgColor)
+  const createGridTexture = (
+    size: number,
+    gridSize: number,
+    gridColor: string,
+    bgColor: string
+  ) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    // 배경 칠하기
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+    // 격자선 칠하기
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= size; i += gridSize) {
+      // 수평선
+      ctx.beginPath();
+      ctx.moveTo(0, i + 0.5);
+      ctx.lineTo(size, i + 0.5);
+      ctx.stroke();
+      // 수직선
+      ctx.beginPath();
+      ctx.moveTo(i + 0.5, 0);
+      ctx.lineTo(i + 0.5, size);
+      ctx.stroke();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+  };
+
   const spawnTarget = () => {
-    const yaw = THREE.MathUtils.degToRad(THREE.MathUtils.randFloat(-90, 90));
-    const pitch = THREE.MathUtils.degToRad(THREE.MathUtils.randFloat(-45, 45));
+    const yaw = THREE.MathUtils.degToRad(THREE.MathUtils.randFloat(-60, 60));
+    const pitch = THREE.MathUtils.degToRad(THREE.MathUtils.randFloat(-40, 40));
     const distance = 20;
 
     const x = distance * Math.cos(pitch) * Math.sin(yaw);
@@ -51,7 +84,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     const z = -distance * Math.cos(pitch) * Math.cos(yaw);
 
     const geometry = new THREE.SphereGeometry(settings.radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff5555 });
+    const material = new THREE.MeshBasicMaterial({ color: 0xff5555 }); //타겟
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);
     targetSceneRef.current.add(mesh);
@@ -72,7 +105,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     targetCameraRef.current.position.set(0, 0, 0);
 
     // 배경 격자 + 돔
-    const grid = new THREE.GridHelper(100, 50, 0xb0b0b0, 0x909090);
+    const grid = new THREE.GridHelper(100, 50, 0xaaaaaa, 0xcccccc);
     grid.position.y = -1;
 
     // targetSceneRef에 추가:
@@ -88,7 +121,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       Math.PI / 2
     );
     const domeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xd0d0d0, // 밝은 파란색 격자 느낌
+      color: 0x1a1a1a , // 밝은 회색 느낌
       side: THREE.BackSide,
       wireframe: true,
       transparent: true,
@@ -97,33 +130,43 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     const domeMesh = new THREE.Mesh(domeGeometry, domeMaterial);
     bgSceneRef.current.add(domeMesh);
 
-    bgSceneRef.current.add(domeMesh);
+    // 벽에 사용할 격자 텍스처 생성
+    // 512px 크기, 32px 간격, 격자색 연회색, 배경은 진한 회색
+    const wallGridTexture = createGridTexture(512, 32, "#bbbbbb", "#666666");
+    wallGridTexture.wrapS = THREE.RepeatWrapping;
+    wallGridTexture.wrapT = THREE.RepeatWrapping;
+    wallGridTexture.repeat.set(1, 1); // 텍스처 반복 횟수 (폭 100 / 10 = 10, 높이 50 / 10 = 5)
 
-    // 격자와 함께 targetScene에 배경 벽 추가
+    // 벽 재질에 텍스처 적용
     const wallMaterial = new THREE.MeshBasicMaterial({
-      color: 0xa0a0a0,
-      side: THREE.BackSide,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.3,
+      map: wallGridTexture,
+      side: THREE.DoubleSide,
     });
 
-    // 좌우 벽
-    const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(100, 50), wallMaterial);
-    leftWall.position.set(-50, 24, 0);
-    leftWall.rotation.y = Math.PI / 2;
+    // 도우미 함수: 벽 생성 (텍스처 크기에 따라 repeat 조정)
+    const createWall = (
+      width: number,
+      height: number,
+      position: THREE.Vector3,
+      rotation: THREE.Euler
+    ) => {
+      const geometry = new THREE.PlaneGeometry(width, height);
+      const mesh = new THREE.Mesh(geometry, wallMaterial);
+      mesh.position.copy(position);
+      mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+      return mesh;
+    };
 
-    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(100, 50), wallMaterial);
-    rightWall.position.set(50, 24, 0);
-    rightWall.rotation.y = -Math.PI / 2;
+    // 전체 벽 생성
+    const walls = [
+      createWall(100, 50, new THREE.Vector3(0, 20, -50), new THREE.Euler(0, 0, 0)), // 뒷벽
+      createWall(100, 50, new THREE.Vector3(-50, 20, 0), new THREE.Euler(0, Math.PI / 2, 0)), // 왼쪽 벽
+      createWall(100, 50, new THREE.Vector3(50, 20, 0), new THREE.Euler(0, -Math.PI / 2, 0)), // 오른쪽 벽
+      createWall(100, 100, new THREE.Vector3(0, 30, 0), new THREE.Euler(-Math.PI / 2, 0, 0)), // 천장
+      createWall(100, 100, new THREE.Vector3(0, 0, 0), new THREE.Euler(Math.PI / 2, 0, 0)), // 바닥 (기존 바닥 격자 있으니 필요시 바꾸세요)
+    ];
 
-    // 뒤쪽 벽
-    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(100, 50), wallMaterial);
-    backWall.position.set(0, 24, -50);
-    backWall.rotation.y = Math.PI;
-
-    // 추가
-    targetSceneRef.current.add(leftWall, rightWall, backWall);
+    walls.forEach((wall) => targetSceneRef.current.add(wall));
 
     // 초기화
     setHitCount(0);
@@ -167,8 +210,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       if (!pointerLocked.current) return;
       rotationRef.current.yaw -= e.movementX * sensitivity * 0.1;
       rotationRef.current.pitch -= e.movementY * sensitivity * 0.1;
-      rotationRef.current.yaw = clamp(rotationRef.current.yaw, -135, 135);
-      rotationRef.current.pitch = clamp(rotationRef.current.pitch, -85, 85);
+      rotationRef.current.yaw = clamp(rotationRef.current.yaw, -67.5, 67.5);      rotationRef.current.pitch = clamp(rotationRef.current.pitch, -45, 45);
     };
 
     const onClick = (e: MouseEvent) => {
