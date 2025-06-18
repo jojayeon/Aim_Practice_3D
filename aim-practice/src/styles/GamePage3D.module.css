@@ -20,7 +20,7 @@
   height: 2px;
   background-color: black;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
-  transform: translate(-50%, -50%);
+  transform: translate(0%, 550%);
 }
 
 .crosshairV {
@@ -28,22 +28,25 @@
   height: 20px;
   background-color: black;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
-  transform: translate(-50%, -50%);
+  transform: translate(450%, 0%);
 }
 
 .info {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   color: white;
   font-size: 16px;
   background: rgba(0, 0, 0, 0.7);
-  padding: 10px;
-  border-radius: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
   z-index: 101;
+  white-space: nowrap;
 }
 
 .instruction {
-  font-size: 14px;
+  font-size: 13px;
   color: yellow;
+  margin-top: 5px;
 }
