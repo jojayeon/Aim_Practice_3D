@@ -1,21 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import styles from "../styles/GamePage3D.module.css";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
-
-interface GamePage3DProps {
-  difficulty: string;
-  sensitivity: number;
-}
-
-const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
+const GamePage3D: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const bgSceneRef = useRef(new THREE.Scene());
   const targetSceneRef = useRef(new THREE.Scene());
   const raycasterRef = useRef(new THREE.Raycaster());
   const pointerLocked = useRef(false);
+  const location = useLocation();
+  const { difficulty = 'medium', sensitivity = 1 } = location.state || {};
   
   const navigate = useNavigate();
   const hasNavigatedRef = useRef(false); // 이동 여부 저장
@@ -92,6 +88,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
   };
 
   useEffect(() => {
+    console.log("감도 전달됨:", sensitivity); // ✅ 감도 값 확인 로그
     const mount = mountRef.current;
     if (!mount) return;
 
@@ -155,6 +152,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     setRemaining(totalTargets);
     targetsRef.current = [];
     spawnedCount.current = 0;
+    hitCountRef.current = 0;
 
     const spawnInterval = setInterval(() => {
       if (spawnedCount.current >= totalTargets) {
@@ -196,6 +194,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     };
     animate();
 
+    // 마우스 이동 시 카메라 회전, 감도 적용
     const onMouseMove = (e: MouseEvent) => {
       if (!pointerLocked.current) return;
       rotationRef.current.yaw -= e.movementX * sensitivity * 0.1;
@@ -204,6 +203,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       rotationRef.current.pitch = clamp(rotationRef.current.pitch, -45, 45);
     };
 
+    // 클릭 시 타겟 적중 체크
     const onClickInLock = () => {
       if (!pointerLocked.current || !rendererRef.current) return;
 
@@ -226,10 +226,12 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       }
     };
 
+     // 포인터락 변경 이벤트 핸들러
     const onPointerLockChange = () => {
       pointerLocked.current = document.pointerLockElement === renderer.domElement;
     };
 
+    // 캔버스 클릭 시 포인터락 요청 또는 적중 체크
     const onCanvasClick = () => {
       if (!pointerLocked.current) {
         renderer.domElement.requestPointerLock();
@@ -238,10 +240,12 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       }
     };
 
+    // 이벤트 등록
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("pointerlockchange", onPointerLockChange);
     renderer.domElement.addEventListener("click", onCanvasClick);
 
+    // 리사이즈 이벤트 핸들러
     const onResize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -253,6 +257,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     };
     window.addEventListener("resize", onResize);
 
+    // 정리(cleanup)
     return () => {
       clearInterval(spawnInterval);
       document.removeEventListener("mousemove", onMouseMove);
