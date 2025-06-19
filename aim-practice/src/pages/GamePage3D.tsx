@@ -31,11 +31,16 @@ const GamePage3D: React.FC = () => {
   const targetsRef = useRef<{ mesh: THREE.Mesh; birth: number }[]>([]);
   const spawnedCount = useRef(0);
 
-  const settings = {
-    interval: 1000,
-    lifespan: 2000,
-    radius: 0.5,
-  };
+  const difficultyLevels = {
+  easy: { interval: 1000, lifetime: 2000, radius: 0.7 },
+  medium: { interval: 700, lifetime: 1400, radius: 0.5 },
+  hard: { interval: 500, lifetime: 1000, radius: 0.35 },
+  } as const;
+
+  type Difficulty = keyof typeof difficultyLevels;
+  const settings = difficultyLevels[difficulty as Difficulty];
+
+
 
   const totalTargets = 100;
 
@@ -168,7 +173,7 @@ const GamePage3D: React.FC = () => {
       const now = Date.now();
 
       targetsRef.current = targetsRef.current.filter(({ mesh, birth }) => {
-        if (now - birth > settings.lifespan) {
+        if (now - birth > settings.lifetime) {
           targetSceneRef.current.remove(mesh);
           setRemaining((r) => r - 1);
           return false;
