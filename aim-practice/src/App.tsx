@@ -13,7 +13,7 @@ const App: React.FC = () => {
         <Route path="/game" element={<GamePage />} />
         <Route
           path="/game3d"
-          element={<GamePage3D difficulty="medium" sensitivity={1} />}
+          element={<GamePage3D/>}
         />
         <Route path="/result" element={<ResultPage />} />
       </Routes>

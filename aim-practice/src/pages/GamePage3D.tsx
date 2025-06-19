@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import styles from "../styles/GamePage3D.module.css";
+import { useLocation, useNavigate } from "react-router-dom";
 
-interface GamePage3DProps {
-  difficulty: string;
-  sensitivity: number;
-}
-
-const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
+const GamePage3D: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const bgSceneRef = useRef(new THREE.Scene());
   const targetSceneRef = useRef(new THREE.Scene());
   const raycasterRef = useRef(new THREE.Raycaster());
   const pointerLocked = useRef(false);
+  const location = useLocation();
+  const { difficulty = 'medium', sensitivity = 1 } = location.state || {};
+  
+  const navigate = useNavigate();
+  const hasNavigatedRef = useRef(false); // 이동 여부 저장
+  const hitCountRef = useRef(0);
 
   const targetCameraRef = useRef(
     new THREE.PerspectiveCamera(103, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -29,11 +31,16 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
   const targetsRef = useRef<{ mesh: THREE.Mesh; birth: number }[]>([]);
   const spawnedCount = useRef(0);
 
-  const settings = {
-    interval: 1000,
-    lifespan: 2000,
-    radius: 0.5,
-  };
+  const difficultyLevels = {
+  easy: { interval: 1000, lifetime: 2000, radius: 0.7 },
+  medium: { interval: 700, lifetime: 1400, radius: 0.5 },
+  hard: { interval: 500, lifetime: 1000, radius: 0.35 },
+  } as const;
+
+  type Difficulty = keyof typeof difficultyLevels;
+  const settings = difficultyLevels[difficulty as Difficulty];
+
+
 
   const totalTargets = 100;
 
@@ -78,7 +85,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     const z = -distance * Math.cos(pitch) * Math.cos(yaw);
 
     const geometry = new THREE.SphereGeometry(settings.radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff5555 });
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);
     targetSceneRef.current.add(mesh);
@@ -86,6 +93,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
   };
 
   useEffect(() => {
+    console.log("감도 전달됨:", sensitivity); // ✅ 감도 값 확인 로그
     const mount = mountRef.current;
     if (!mount) return;
 
@@ -99,12 +107,13 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     targetCameraRef.current.position.set(0, 0, 0);
 
     const grid = new THREE.GridHelper(100, 50, 0xaaaaaa, 0xcccccc);
+    grid.material.depthWrite = false; 
     grid.position.y = -1;
     targetSceneRef.current.add(grid);
 
     const domeGeometry = new THREE.SphereGeometry(50, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
     const domeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a1a,
+      color: 0xff0000, 
       side: THREE.BackSide,
       wireframe: true,
       transparent: true,
@@ -149,6 +158,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     setRemaining(totalTargets);
     targetsRef.current = [];
     spawnedCount.current = 0;
+    hitCountRef.current = 0;
 
     const spawnInterval = setInterval(() => {
       if (spawnedCount.current >= totalTargets) {
@@ -164,15 +174,22 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       const now = Date.now();
 
       targetsRef.current = targetsRef.current.filter(({ mesh, birth }) => {
-        if (now - birth > settings.lifespan) {
-          console.log("🗑️ Target removed by timeout");
+        if (now - birth > settings.lifetime) {
           targetSceneRef.current.remove(mesh);
           setRemaining((r) => r - 1);
           return false;
         }
         return true;
       });
-
+      if (
+        spawnedCount.current === totalTargets &&
+        remaining === 0 &&
+        !hasNavigatedRef.current
+      ) {
+        hasNavigatedRef.current = true;
+        navigate("/result", { state: { score: hitCountRef.current } });
+        return;
+      }
       targetCameraRef.current.rotation.order = "YXZ";
       targetCameraRef.current.rotation.y = THREE.MathUtils.degToRad(rotationRef.current.yaw);
       targetCameraRef.current.rotation.x = THREE.MathUtils.degToRad(rotationRef.current.pitch);
@@ -183,6 +200,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     };
     animate();
 
+    // 마우스 이동 시 카메라 회전, 감도 적용
     const onMouseMove = (e: MouseEvent) => {
       if (!pointerLocked.current) return;
       rotationRef.current.yaw -= e.movementX * sensitivity * 0.1;
@@ -191,6 +209,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       rotationRef.current.pitch = clamp(rotationRef.current.pitch, -45, 45);
     };
 
+    // 클릭 시 타겟 적중 체크
     const onClickInLock = () => {
       if (!pointerLocked.current || !rendererRef.current) return;
 
@@ -199,19 +218,26 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
         targetsRef.current.map((t) => t.mesh)
       );
       if (intersects.length > 0) {
-  const hit = intersects[0].object;
-  console.log("🎯 Target Hit!", hit); // 콘솔 로그 추가
-  targetSceneRef.current.remove(hit);
-  targetsRef.current = targetsRef.current.filter((t) => t.mesh !== hit);
-  setHitCount((h) => h + 1);
-  setRemaining((r) => r - 1);
-}
+        const hit = intersects[0].object;
+        targetSceneRef.current.remove(hit);
+        targetsRef.current = targetsRef.current.filter((t) => t.mesh !== hit);
+
+        // ✅ hitCount state + ref 업데이트
+        setHitCount((h) => {
+          const newHit = h + 1;
+          hitCountRef.current = newHit;
+          return newHit;
+        });
+        setRemaining((r) => r - 1);
+      }
     };
 
+     // 포인터락 변경 이벤트 핸들러
     const onPointerLockChange = () => {
       pointerLocked.current = document.pointerLockElement === renderer.domElement;
     };
 
+    // 캔버스 클릭 시 포인터락 요청 또는 적중 체크
     const onCanvasClick = () => {
       if (!pointerLocked.current) {
         renderer.domElement.requestPointerLock();
@@ -220,10 +246,12 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       }
     };
 
+    // 이벤트 등록
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("pointerlockchange", onPointerLockChange);
     renderer.domElement.addEventListener("click", onCanvasClick);
 
+    // 리사이즈 이벤트 핸들러
     const onResize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -235,6 +263,7 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
     };
     window.addEventListener("resize", onResize);
 
+    // 정리(cleanup)
     return () => {
       clearInterval(spawnInterval);
       document.removeEventListener("mousemove", onMouseMove);
@@ -251,7 +280,6 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
 
   return (
     <div className={styles.container}>
-      
       <div ref={mountRef} style={{ width: "100%", height: "100%" }}></div>
       <div className={styles.crosshair}>
         <div className={styles.crosshairH}></div>
@@ -259,7 +287,6 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       </div>
       <div className={styles.info}>
         난이도: {difficulty.toUpperCase()} | 감도: {sensitivity} | 맞춘 타겟: {hitCount} / {totalTargets}
-        <div className={styles.instruction}>Click to lock pointer and aim</div>
       </div>
     </div>
   );
