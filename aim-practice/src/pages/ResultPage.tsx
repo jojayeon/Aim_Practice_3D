@@ -7,6 +7,7 @@ import styles from '../styles/ResultPage.module.css';
 const ResultPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  console.log("📦 Received state from navigate:", location.state);
   const { score } = location.state || { score: 0 };
 
   return (
