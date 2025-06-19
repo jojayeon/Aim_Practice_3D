@@ -171,7 +171,6 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
 
       targetsRef.current = targetsRef.current.filter(({ mesh, birth }) => {
         if (now - birth > settings.lifespan) {
-          console.log("🗑️ Target removed by timeout");
           targetSceneRef.current.remove(mesh);
           setRemaining((r) => r - 1);
           return false;
@@ -184,7 +183,6 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
         !hasNavigatedRef.current
       ) {
         hasNavigatedRef.current = true;
-        console.log("🚀 Navigating to result with score:", hitCountRef.current);
         navigate("/result", { state: { score: hitCountRef.current } });
         return;
       }
@@ -215,7 +213,6 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
       );
       if (intersects.length > 0) {
         const hit = intersects[0].object;
-        console.log("🎯 Target Hit!", hit);
         targetSceneRef.current.remove(hit);
         targetsRef.current = targetsRef.current.filter((t) => t.mesh !== hit);
 
