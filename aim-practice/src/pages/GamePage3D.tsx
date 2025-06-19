@@ -85,7 +85,7 @@ const GamePage3D: React.FC = () => {
     const z = -distance * Math.cos(pitch) * Math.cos(yaw);
 
     const geometry = new THREE.SphereGeometry(settings.radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff5555 });
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);
     targetSceneRef.current.add(mesh);
@@ -107,12 +107,13 @@ const GamePage3D: React.FC = () => {
     targetCameraRef.current.position.set(0, 0, 0);
 
     const grid = new THREE.GridHelper(100, 50, 0xaaaaaa, 0xcccccc);
+    grid.material.depthWrite = false; 
     grid.position.y = -1;
     targetSceneRef.current.add(grid);
 
     const domeGeometry = new THREE.SphereGeometry(50, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
     const domeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a1a,
+      color: 0xff0000, 
       side: THREE.BackSide,
       wireframe: true,
       transparent: true,
