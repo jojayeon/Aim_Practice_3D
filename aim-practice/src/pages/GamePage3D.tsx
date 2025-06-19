@@ -280,7 +280,6 @@ const GamePage3D: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      
       <div ref={mountRef} style={{ width: "100%", height: "100%" }}></div>
       <div className={styles.crosshair}>
         <div className={styles.crosshairH}></div>
@@ -288,7 +287,6 @@ const GamePage3D: React.FC = () => {
       </div>
       <div className={styles.info}>
         난이도: {difficulty.toUpperCase()} | 감도: {sensitivity} | 맞춘 타겟: {hitCount} / {totalTargets}
-        <div className={styles.instruction}>Click to lock pointer and aim</div>
       </div>
     </div>
   );
