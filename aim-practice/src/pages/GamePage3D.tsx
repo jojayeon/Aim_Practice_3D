@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import styles from "../styles/GamePage3D.module.css";
+import { useNavigate } from "react-router-dom";
+
 
 interface GamePage3DProps {
   difficulty: string;
@@ -14,6 +16,10 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
   const targetSceneRef = useRef(new THREE.Scene());
   const raycasterRef = useRef(new THREE.Raycaster());
   const pointerLocked = useRef(false);
+  
+  const navigate = useNavigate();
+  const hasNavigatedRef = useRef(false); // 이동 여부 저장
+  const hitCountRef = useRef(0);
 
   const targetCameraRef = useRef(
     new THREE.PerspectiveCamera(103, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -172,7 +178,16 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
         }
         return true;
       });
-
+      if (
+        spawnedCount.current === totalTargets &&
+        remaining === 0 &&
+        !hasNavigatedRef.current
+      ) {
+        hasNavigatedRef.current = true;
+        console.log("🚀 Navigating to result with score:", hitCountRef.current);
+        navigate("/result", { state: { score: hitCountRef.current } });
+        return;
+      }
       targetCameraRef.current.rotation.order = "YXZ";
       targetCameraRef.current.rotation.y = THREE.MathUtils.degToRad(rotationRef.current.yaw);
       targetCameraRef.current.rotation.x = THREE.MathUtils.degToRad(rotationRef.current.pitch);
@@ -199,13 +214,19 @@ const GamePage3D: React.FC<GamePage3DProps> = ({ difficulty, sensitivity }) => {
         targetsRef.current.map((t) => t.mesh)
       );
       if (intersects.length > 0) {
-  const hit = intersects[0].object;
-  console.log("🎯 Target Hit!", hit); // 콘솔 로그 추가
-  targetSceneRef.current.remove(hit);
-  targetsRef.current = targetsRef.current.filter((t) => t.mesh !== hit);
-  setHitCount((h) => h + 1);
-  setRemaining((r) => r - 1);
-}
+        const hit = intersects[0].object;
+        console.log("🎯 Target Hit!", hit);
+        targetSceneRef.current.remove(hit);
+        targetsRef.current = targetsRef.current.filter((t) => t.mesh !== hit);
+
+        // ✅ hitCount state + ref 업데이트
+        setHitCount((h) => {
+          const newHit = h + 1;
+          hitCountRef.current = newHit;
+          return newHit;
+        });
+        setRemaining((r) => r - 1);
+      }
     };
 
     const onPointerLockChange = () => {
