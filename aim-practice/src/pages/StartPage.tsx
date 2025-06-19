@@ -60,6 +60,7 @@ const StartPage: React.FC = () => {
           onChange={(e) => setSensitivity(Number(e.target.value))}
           className={styles.input}
         />
+        <div>(0.1~10)</div>
       </div>
 
       <Button onClick={handleStart}>게임 시작</Button>
